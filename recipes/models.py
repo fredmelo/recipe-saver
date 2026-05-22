@@ -1,10 +1,13 @@
+from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import User
+
+_hex_color = RegexValidator(r'^#[0-9A-Fa-f]{6}$', 'Enter a valid hex color (e.g. #6366f1)')
 
 
 class Tag(models.Model):
     name = models.CharField(max_length=50)
-    color = models.CharField(max_length=7, default='#6366f1')
+    color = models.CharField(max_length=7, default='#6366f1', validators=[_hex_color])
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tags')
 
     class Meta:

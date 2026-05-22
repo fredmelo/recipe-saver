@@ -1,16 +1,19 @@
+import ipaddress
 import json
+import socket
+import urllib.parse
+
 import requests
 from bs4 import BeautifulSoup
-from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
 
-from .models import Recipe, Tag
 from .forms import RecipeForm, RegisterForm
+from .models import Recipe, Tag
 
 
 def home(request):
@@ -61,7 +64,7 @@ def recipe_list(request):
     if query:
         recipes = recipes.filter(title__icontains=query)
     if tag_id:
-        recipes = recipes.filter(tags__id=tag_id)
+        recipes = recipes.filter(tags__id=tag_id).distinct()
 
     active_tag = None
     if tag_id:
@@ -83,8 +86,8 @@ def recipe_detail(request, pk):
 
 def _form_context(request, form, recipe=None):
     if recipe:
-        ingredients = recipe.ingredients if recipe.ingredients else ['']
-        steps = recipe.steps if recipe.steps else ['']
+        ingredients = recipe.ingredients or ['']
+        steps = recipe.steps or ['']
         selected_ids = [str(t.id) for t in recipe.tags.all()]
         initial_rating = recipe.rating or 0
     else:
@@ -172,6 +175,10 @@ def scrape_url(request):
         if not url:
             return JsonResponse({'error': 'URL required'}, status=400)
 
+        safe, err = _check_url_safe(url)
+        if not safe:
+            return JsonResponse({'error': err}, status=400)
+
         headers = {'User-Agent': 'Mozilla/5.0 (compatible; RecipeSaver/1.0)'}
         resp = requests.get(url, timeout=10, headers=headers)
         resp.raise_for_status()
@@ -207,6 +214,25 @@ def tag_create(request):
         return JsonResponse({'id': tag.id, 'name': tag.name, 'color': tag.color})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+def _check_url_safe(url):
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return False, 'Only http/https URLs are allowed'
+        hostname = parsed.hostname
+        if not hostname:
+            return False, 'Invalid URL'
+        ip = socket.gethostbyname(hostname)
+        addr = ipaddress.ip_address(ip)
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+            return False, 'Requests to internal addresses are not allowed'
+        return True, None
+    except socket.gaierror:
+        return False, 'Could not resolve hostname'
+    except Exception:
+        return False, 'Invalid URL'
 
 
 def _parse_json_list(raw):
