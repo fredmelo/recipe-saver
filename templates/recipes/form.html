@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+{% block title %}{% if recipe %}Edit Recipe{% else %}Add New Recipe{% endblock %}
+{% block content %}
+<div class="px-4 py-6 sm:px-6 lg:px-8 max-w-3xl mx-auto">
+
+  <a href="{% if recipe %}{% url 'recipe_detail' recipe.pk %}{% else %}{% url 'recipe_list' %}{% endif %}"
+     class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-4">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
+    </svg>
+    {% if recipe %}Back to recipe{% else %}Back to recipes{% endif %}
+  </a>
+  <h1 class="text-2xl font-bold text-gray-900 mb-6">{% if recipe %}Edit Recipe{% else %}Add New Recipe{% endif %}</h1>
+
+  {% if form.non_field_errors %}
+  <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-6">
+    {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" id="recipe-form" class="space-y-6">
+    {% csrf_token %}
+    <input type="hidden" name="ingredients_json" id="ingredients-json">
+    <input type="hidden" name="steps_json" id="steps-json">
+    <input type="hidden" name="rating" id="rating-input">
+
+    <!-- Source URL -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">Recipe Source</h2>
+      <div class="flex gap-2">
+        <input type="url" name="source_url" id="id-source-url" value="{{ form.source_url.value|default:'' }}"
+               placeholder="https://www.example.com/recipe/..."
+               class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <button type="button" id="fetch-btn"
+                class="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/>
+          </svg>
+          Fetch
+        </button>
+      </div>
+      <p id="fetch-msg" class="text-sm text-amber-600 mt-2 hidden"></p>
+      <p class="text-xs text-gray-400 mt-2">Paste a URL and click "Fetch" to auto-fill title, thumbnail, and description.</p>
+    </div>
+
+    <!-- Details -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
+      <h2 class="text-base font-semibold text-gray-900">Recipe Details</h2>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+        <input type="text" name="title" id="id-title" required value="{{ form.title.value|default:'' }}"
+               placeholder="Recipe name"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        {% if form.title.errors %}<p class="text-xs text-red-600 mt-1">{{ form.title.errors.0 }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea name="description" id="id-description" rows="3" placeholder="Brief description..."
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none">{{ form.description.value|default:'' }}</textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Thumbnail URL</label>
+        <div class="flex gap-2 items-start">
+          <input type="url" name="thumbnail" id="id-thumbnail" value="{{ form.thumbnail.value|default:'' }}"
+                 placeholder="https://example.com/image.jpg"
+                 class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                 oninput="updateThumb(this.value)">
+          <div id="thumb-preview" class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 {% if not form.thumbnail.value %}hidden{% endif %}">
+            <img id="thumb-img" src="{{ form.thumbnail.value|default:'' }}" alt="" class="w-full h-full object-cover">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+        <div class="flex gap-1" id="star-row">
+          {% for i in "12345" %}
+          <button type="button" class="star text-2xl text-gray-300 hover:text-yellow-400 transition-colors leading-none" data-val="{{ i }}">★</button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+        <div class="flex flex-wrap gap-2" id="tags-container">
+          {% for tag in tags %}
+          <button type="button" class="tag-btn px-2.5 py-1 rounded-full text-xs font-semibold border-2 transition-colors"
+                  data-id="{{ tag.id }}" data-color="{{ tag.color }}">{{ tag.name }}</button>
+          {% endfor %}
+        </div>
+        <div class="mt-3">
+          <button type="button" id="show-tag-form" class="text-sm text-indigo-600 hover:text-indigo-500">+ Add tag</button>
+          <div id="tag-form" class="hidden mt-2 flex gap-2 items-center flex-wrap">
+            <input type="text" id="tag-name" placeholder="Tag name" maxlength="50"
+                   class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-36">
+            <input type="color" id="tag-color" value="#6366f1" class="w-8 h-8 rounded cursor-pointer border border-gray-200">
+            <button type="button" id="save-tag" class="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">Save</button>
+            <button type="button" id="cancel-tag" class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+          </div>
+          <p id="tag-err" class="text-sm text-red-600 mt-1 hidden"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ingredients -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">Ingredients</h2>
+      <div id="ing-list" class="space-y-2"></div>
+      <button type="button" onclick="addIng()" class="mt-3 text-sm text-indigo-600 hover:text-indigo-500">+ Add ingredient</button>
+    </div>
+
+    <!-- Steps -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">Instructions</h2>
+      <div id="steps-list" class="space-y-3"></div>
+      <button type="button" onclick="addStep()" class="mt-3 text-sm text-indigo-600 hover:text-indigo-500">+ Add step</button>
+    </div>
+
+    <!-- Notes -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">Notes</h2>
+      <textarea name="notes" rows="4" placeholder="Personal notes, tips, or variations..."
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none">{{ form.notes.value|default:'' }}</textarea>
+    </div>
+
+    <div class="flex items-center gap-3 pb-8">
+      <button type="submit" class="px-8 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">
+        {% if recipe %}Save changes{% else %}Save recipe{% endif %}
+      </button>
+      <a href="{% if recipe %}{% url 'recipe_detail' recipe.pk %}{% else %}{% url 'recipe_list' %}{% endif %}"
+         class="px-4 py-2.5 bg-white border border-gray-300 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{{ ingredients_json|json_script:"ing-data" }}
+{{ steps_json|json_script:"steps-data" }}
+{{ selected_tag_ids_json|json_script:"tag-ids-data" }}
+
+<script>
+  let ings = JSON.parse(document.getElementById('ing-data').textContent);
+  let steps = JSON.parse(document.getElementById('steps-data').textContent);
+  let selectedIds = JSON.parse(document.getElementById('tag-ids-data').textContent).map(String);
+  let rating = {{ initial_rating }};
+
+  // --- Ingredients ---
+  function renderIngs() {
+    const el = document.getElementById('ing-list');
+    el.innerHTML = ings.map((v, i) => `
+      <div class="flex gap-2 items-center">
+        <input type="text" value="${esc(v)}" placeholder="e.g. 1 cup flour"
+               class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+               oninput="ings[${i}]=this.value">
+        <button type="button" onclick="removeIng(${i})" class="text-gray-400 hover:text-red-500">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>`).join('');
+  }
+  function addIng() { ings.push(''); renderIngs(); focusLast('ing-list'); }
+  function removeIng(i) { ings.splice(i,1); renderIngs(); }
+
+  // --- Steps ---
+  function renderSteps() {
+    const el = document.getElementById('steps-list');
+    el.innerHTML = steps.map((v, i) => `
+      <div class="flex gap-3 items-start">
+        <div class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex-shrink-0 flex items-center justify-center text-xs font-bold mt-2">${i+1}</div>
+        <textarea rows="2" placeholder="Describe this step..."
+                  class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  oninput="steps[${i}]=this.value">${esc(v)}</textarea>
+        <button type="button" onclick="removeStep(${i})" class="text-gray-400 hover:text-red-500 mt-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>`).join('');
+  }
+  function addStep() { steps.push(''); renderSteps(); focusLast('steps-list'); }
+  function removeStep(i) { steps.splice(i,1); renderSteps(); }
+
+  // --- Stars ---
+  function paintStars(val) {
+    document.querySelectorAll('.star').forEach(s => {
+      const v = parseInt(s.dataset.val);
+      s.classList.toggle('text-yellow-400', v <= val);
+      s.classList.toggle('text-gray-300', v > val);
+    });
+  }
+  document.querySelectorAll('.star').forEach(s => {
+    s.addEventListener('click', () => { rating = rating === parseInt(s.dataset.val) ? 0 : parseInt(s.dataset.val); paintStars(rating); });
+    s.addEventListener('mouseenter', () => paintStars(parseInt(s.dataset.val)));
+    s.addEventListener('mouseleave', () => paintStars(rating));
+  });
+
+  // --- Thumbnail ---
+  function updateThumb(url) {
+    const p = document.getElementById('thumb-preview');
+    document.getElementById('thumb-img').src = url;
+    p.classList.toggle('hidden', !url);
+  }
+
+  // --- URL fetch ---
+  document.getElementById('fetch-btn').addEventListener('click', async () => {
+    const url = document.getElementById('id-source-url').value.trim();
+    if (!url) return;
+    const btn = document.getElementById('fetch-btn');
+    const msg = document.getElementById('fetch-msg');
+    btn.disabled = true; btn.textContent = 'Fetching...'; msg.classList.add('hidden');
+    try {
+      const r = await fetch('/api/scrape/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken': csrf()},
+        body: JSON.stringify({url}),
+      });
+      const d = await r.json();
+      if (!r.ok) { msg.textContent = d.error || 'Failed'; msg.classList.remove('hidden'); return; }
+      if (d.title) document.getElementById('id-title').value = d.title;
+      if (d.thumbnail) { document.getElementById('id-thumbnail').value = d.thumbnail; updateThumb(d.thumbnail); }
+      if (d.description) document.getElementById('id-description').value = d.description;
+    } catch { msg.textContent = 'Network error.'; msg.classList.remove('hidden'); }
+    finally { btn.disabled = false; btn.textContent = 'Fetch'; }
+  });
+
+  // --- Tags ---
+  function initTags() {
+    document.querySelectorAll('.tag-btn').forEach(btn => {
+      applyTag(btn, selectedIds.includes(String(btn.dataset.id)));
+      btn.addEventListener('click', () => {
+        const id = String(btn.dataset.id);
+        const on = selectedIds.includes(id);
+        if (on) selectedIds = selectedIds.filter(x => x !== id);
+        else selectedIds.push(id);
+        applyTag(btn, !on);
+      });
+    });
+  }
+  function applyTag(btn, on) {
+    const c = btn.dataset.color;
+    btn.style.borderColor = c;
+    btn.style.backgroundColor = on ? c : '';
+    btn.style.color = on ? 'white' : c;
+  }
+  function addTagToUI(id, name, color) {
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'tag-btn px-2.5 py-1 rounded-full text-xs font-semibold border-2 transition-colors';
+    btn.dataset.id = String(id); btn.dataset.color = color; btn.textContent = name;
+    selectedIds.push(String(id));
+    applyTag(btn, true);
+    btn.addEventListener('click', () => {
+      const i = selectedIds.indexOf(String(id));
+      if (i > -1) { selectedIds.splice(i,1); applyTag(btn, false); }
+      else { selectedIds.push(String(id)); applyTag(btn, true); }
+    });
+    document.getElementById('tags-container').appendChild(btn);
+  }
+
+  document.getElementById('show-tag-form').addEventListener('click', () => {
+    document.getElementById('tag-form').classList.remove('hidden');
+    document.getElementById('tag-name').focus();
+  });
+  document.getElementById('cancel-tag').addEventListener('click', () => {
+    document.getElementById('tag-form').classList.add('hidden');
+    document.getElementById('tag-name').value = '';
+  });
+  document.getElementById('save-tag').addEventListener('click', saveTag);
+  document.getElementById('tag-name').addEventListener('keydown', e => { if (e.key==='Enter'){e.preventDefault();saveTag();} });
+
+  async function saveTag() {
+    const name = document.getElementById('tag-name').value.trim();
+    const color = document.getElementById('tag-color').value;
+    const err = document.getElementById('tag-err');
+    if (!name) return;
+    err.classList.add('hidden');
+    try {
+      const r = await fetch('/api/tags/', {
+        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+        body: JSON.stringify({name, color}),
+      });
+      const d = await r.json();
+      if (!r.ok) { err.textContent = d.error||'Failed'; err.classList.remove('hidden'); return; }
+      addTagToUI(d.id, d.name, d.color);
+      document.getElementById('tag-form').classList.add('hidden');
+      document.getElementById('tag-name').value = '';
+    } catch { err.textContent='Failed to create tag.'; err.classList.remove('hidden'); }
+  }
+
+  // --- Submit ---
+  document.getElementById('recipe-form').addEventListener('submit', () => {
+    document.getElementById('ingredients-json').value = JSON.stringify(ings.filter(s=>s.trim()));
+    document.getElementById('steps-json').value = JSON.stringify(steps.filter(s=>s.trim()));
+    document.getElementById('rating-input').value = rating || '';
+    document.querySelectorAll('input[name=tag_ids]').forEach(e=>e.remove());
+    selectedIds.forEach(id => {
+      const inp = document.createElement('input');
+      inp.type='hidden'; inp.name='tag_ids'; inp.value=id;
+      document.getElementById('recipe-form').appendChild(inp);
+    });
+  });
+
+  // --- Helpers ---
+  function csrf() {
+    const c = document.cookie.split(';').find(x=>x.trim().startsWith('csrftoken='));
+    return c ? c.split('=')[1] : '';
+  }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function focusLast(id) { const els=document.getElementById(id).querySelectorAll('input,textarea'); if(els.length) els[els.length-1].focus(); }
+
+  // --- Init ---
+  renderIngs();
+  renderSteps();
+  paintStars(rating);
+  initTags();
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block auth_content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+  <div class="w-full max-w-sm">
+    <div class="flex justify-center mb-8">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
+          <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+          </svg>
+        </div>
+        <span class="font-bold text-gray-900 text-xl">Recipe Saver</span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+      <h2 class="text-xl font-semibold text-gray-900 mb-6">Create your account</h2>
+
+      {% if form.non_field_errors %}
+      <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-5">
+        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" class="space-y-5">
+        {% csrf_token %}
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+          <input type="email" name="email" required autocomplete="email" placeholder="you@example.com"
+                 value="{{ form.email.value|default:'' }}"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          {% if form.email.errors %}<p class="text-xs text-red-600 mt-1">{{ form.email.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" name="password" required autocomplete="new-password" placeholder="At least 6 characters"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          {% if form.password.errors %}<p class="text-xs text-red-600 mt-1">{{ form.password.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+          <input type="password" name="confirm_password" required autocomplete="new-password" placeholder="••••••••"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+          Create account
+        </button>
+      </form>
+
+      <p class="text-center text-sm text-gray-600 mt-5">
+        Already have an account?
+        <a href="{% url 'login' %}" class="font-semibold text-indigo-600 hover:text-indigo-500">Sign in</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

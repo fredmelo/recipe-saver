@@ -1,0 +1,12 @@
+ To run locally:
+  pip install -r requirements.txt
+  export DATABASE_URL="postgresql://..."   # or leave blank for SQLite
+  export SECRET_KEY="any-random-string"
+  python manage.py migrate
+  python manage.py runserver
+
+  EasyPanel env vars to set:
+  DATABASE_URL=postgresql://...  (from Supabase)
+  SECRET_KEY=<random 50-char string>
+  ALLOWED_HOSTS=yourdomain.com
+  PORT=8000
