@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=appuser:appuser . .
 
+ENV SECRET_KEY=build-placeholder
 RUN python manage.py collectstatic --noinput
 
 USER appuser
