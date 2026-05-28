@@ -1,4 +1,4 @@
-from django.core.validators import RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -26,7 +26,7 @@ class Recipe(models.Model):
     ingredients = models.JSONField(default=list)
     steps = models.JSONField(default=list)
     notes = models.TextField(blank=True, null=True)
-    rating = models.IntegerField(blank=True, null=True)
+    rating = models.IntegerField(blank=True, null=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recipes')

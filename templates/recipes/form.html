@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{% if recipe %}Edit Recipe{% else %}Add New Recipe{% endblock %}
+{% block title %}{% if recipe %}Edit Recipe{% else %}Add New Recipe{% endif %}{% endblock %}
 {% block content %}
 <div class="px-4 py-6 sm:px-6 lg:px-8 max-w-3xl mx-auto">
 
@@ -36,7 +36,7 @@
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/>
           </svg>
-          Fetch
+          <span id="fetch-btn-label">Fetch</span>
         </button>
       </div>
       <p id="fetch-msg" class="text-sm text-amber-600 mt-2 hidden"></p>
@@ -205,8 +205,9 @@
     const url = document.getElementById('id-source-url').value.trim();
     if (!url) return;
     const btn = document.getElementById('fetch-btn');
+    const label = document.getElementById('fetch-btn-label');
     const msg = document.getElementById('fetch-msg');
-    btn.disabled = true; btn.textContent = 'Fetching...'; msg.classList.add('hidden');
+    btn.disabled = true; label.textContent = 'Fetching...'; msg.classList.add('hidden');
     try {
       const r = await fetch('/api/scrape/', {
         method: 'POST',
@@ -219,7 +220,7 @@
       if (d.thumbnail) { document.getElementById('id-thumbnail').value = d.thumbnail; updateThumb(d.thumbnail); }
       if (d.description) document.getElementById('id-description').value = d.description;
     } catch { msg.textContent = 'Network error.'; msg.classList.remove('hidden'); }
-    finally { btn.disabled = false; btn.textContent = 'Fetch'; }
+    finally { btn.disabled = false; label.textContent = 'Fetch'; }
   });
 
   // --- Tags ---
@@ -296,6 +297,8 @@
       inp.type='hidden'; inp.name='tag_ids'; inp.value=id;
       document.getElementById('recipe-form').appendChild(inp);
     });
+    const submitBtn = document.querySelector('#recipe-form [type=submit]');
+    if (submitBtn) submitBtn.disabled = true;
   });
 
   // --- Helpers ---

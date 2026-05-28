@@ -5,7 +5,7 @@ from .models import Recipe
 
 class RegisterForm(forms.Form):
     email = forms.EmailField()
-    password = forms.CharField(widget=forms.PasswordInput, min_length=6)
+    password = forms.CharField(widget=forms.PasswordInput, min_length=8)
     confirm_password = forms.CharField(widget=forms.PasswordInput)
 
     def clean_email(self):
