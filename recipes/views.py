@@ -122,9 +122,9 @@ def _form_context(request, form, recipe=None):
         'form': form,
         'recipe': recipe,
         'tags': Tag.objects.filter(user=request.user).order_by('name'),
-        'ingredients_json': json.dumps(ingredients if ingredients else ['']),
-        'steps_json': json.dumps(steps if steps else ['']),
-        'selected_tag_ids_json': json.dumps(selected_ids),
+        'ingredients_json': ingredients if ingredients else [''],
+        'steps_json': steps if steps else [''],
+        'selected_tag_ids_json': selected_ids,
         'initial_rating': int(initial_rating),
     }
 
